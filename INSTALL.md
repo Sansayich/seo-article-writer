@@ -7,7 +7,7 @@
 - [ ] Claude Code установлен и работает (`claude --version`)
 - [ ] Node.js 18+ установлен (`node --version`)
 - [ ] SSH-доступ к серверу для хранения картинок (или альтернатива — S3/R2/локальный)
-- [ ] Аккаунт ApiYi для генерации изображений
+- [ ] Аккаунт Kie.ai для генерации изображений
 - [ ] (Опционально) Wordstat MCP для сбора семантики
 - [ ] (Опционально) WordPress-блог для публикации в Дзен
 
@@ -40,16 +40,15 @@ cp config.env.example config.env
 
 ## Получение API-ключей
 
-### ApiYi (генерация изображений)
+### Kie.ai (генерация изображений)
 
-ApiYi предоставляет доступ к моделям генерации изображений (Nano Banana 2, Gemini Image и др.) через единый API.
+Kie.ai предоставляет доступ к моделям генерации изображений (Nano Banana 2, Gemini Image и др.) через OpenAI-совместимый API.
 
-1. Зарегистрируйся на [apiyi.com](https://apiyi.com)
-2. Пополни баланс (минимум ~100 руб, хватает на десятки изображений)
-3. В личном кабинете создай API-ключ
-4. Скопируй ключ в `config.env`:
+1. Зарегистрируйся на [kieai.erweima.ai](https://kieai.erweima.ai/)
+2. В личном кабинете (Dashboard) получи API-ключ
+3. Скопируй ключ в `config.env`:
    ```
-   APIYI_API_KEY="sk-ваш-ключ-здесь"
+   KIE_API_KEY="sk-ваш-ключ-здесь"
    ```
 
 Скрипт использует модели в порядке приоритета:
@@ -348,6 +347,126 @@ cp projects/platforms/_template.md \
 
 ---
 
+## Подключение MCP-серверов (Wordstat, Kie.ai и др.)
+
+Скилл использует MCP-серверы для сбора семантики (Wordstat) и других задач. Все MCP подключаются через единый коннектор [mcp-kv.ru](https://mcp-kv.ru).
+
+### Доступные MCP-серверы
+
+- **Wordstat MCP** — данные Яндекс.Вордстат для сбора семантики (инструменты: `wordstat_get_top_requests`, `wordstat_get_dynamics`, `wordstat_get_regions`). Используется на ЭТАПЕ 1 скилла.
+- **Kie.ai MCP** — генерация изображений через MCP-инструменты (`nano_banana_pro`, `flux2-pro`, `seedream` и др.). Скилл использует bash-скрипты для генерации, но MCP-инструменты тоже доступны.
+- **WordPress MCP** — управление постами, категориями, медиа через MCP.
+- **Telegram MCP** — отправка уведомлений, публикация в каналы.
+- **VK MCP** — публикация в сообщества ВКонтакте.
+- И другие.
+
+### Настройка
+
+1. Перейди на [mcp-kv.ru](https://mcp-kv.ru)
+2. Зарегистрируйся / войди
+3. Подключи нужные сервисы:
+   - **Wordstat** — требует авторизацию через Яндекс OAuth
+   - **Kie.ai** — требует API-ключ Kie.ai (тот же, что в `config.env`)
+   - **WordPress** — требует URL сайта + Application Password
+   - Остальные — по инструкциям на сайте
+4. Получи URL твоего MCP-коннектора (формат: `https://mcp-kv.ru/mcp/YOUR_KEY`)
+5. Добавь в настройки Claude Code (`~/.claude/settings.json` или `.claude/settings.json` в проекте):
+
+```json
+{
+  "mcpServers": {
+    "wordstat": {
+      "type": "url",
+      "url": "https://mcp-kv.ru/mcp/YOUR_KEY"
+    }
+  }
+}
+```
+
+6. Перезапусти Claude Code — инструменты Wordstat и других подключённых сервисов появятся в списке доступных.
+
+> **Примечание:** Скилл использует Wordstat MCP для сбора семантики (ЭТАП 1) и bash-скрипты для генерации изображений. Kie.ai MCP-инструменты доступны, но скилл намеренно использует bash-скрипты `generate-image.sh` для большего контроля над процессом генерации.
+
+---
+
+## Подробная настройка WordPress-доступа
+
+WordPress используется как промежуточное звено для публикации в Яндекс.Дзен через RSS.
+
+### Вариант A: Application Passwords (рекомендуется)
+
+Application Passwords — встроенный механизм WordPress (с версии 5.6) для доступа к REST API.
+
+1. Войди в WordPress Admin → **Пользователи → Ваш профиль** (или Users → Your Profile)
+2. Прокрути вниз до секции **Application Passwords** (Пароли приложений)
+3. В поле "Название нового пароля приложения" введи имя, например: `SEO Writer`
+4. Нажми **Добавить новый пароль приложения** (Add New Application Password)
+5. **Скопируй сгенерированный пароль** — он показывается только один раз!
+6. Добавь в `config.env`:
+   ```
+   WP_MYSITE_URL="https://blog.example.ru"
+   WP_MYSITE_USER="admin"
+   WP_MYSITE_PASS="xxxx xxxx xxxx xxxx xxxx xxxx"
+   ```
+
+**Если секция Application Passwords не отображается:**
+- Убедись, что сайт работает по **HTTPS** (обязательное требование)
+- Проверь версию WordPress — нужна 5.6 или выше
+- Если WordPress старый — установи плагин "Application Passwords"
+- Некоторые плагины безопасности (iThemes, Wordfence) могут скрывать эту секцию — проверь их настройки
+
+### Вариант B: JWT Authentication (для продвинутых)
+
+Для кастомных конфигураций можно использовать JWT-авторизацию:
+
+1. Установи плагин "JWT Authentication for WP REST API"
+2. Добавь в `wp-config.php`:
+   ```php
+   define('JWT_AUTH_SECRET_KEY', 'ваш-секретный-ключ-здесь');
+   define('JWT_AUTH_CORS_ENABLE', true);
+   ```
+3. Добавь в `.htaccess`:
+   ```apache
+   RewriteEngine on
+   RewriteCond %{HTTP:Authorization} ^(.*)
+   RewriteRule ^(.*) - [E=HTTP_AUTHORIZATION:%1]
+   ```
+4. Получи токен: `POST /wp-json/jwt-auth/v1/token` с логином/паролем
+5. Используй токен в заголовке `Authorization: Bearer <token>`
+
+### Проверка доступа
+
+После настройки проверь что API работает:
+
+```bash
+curl -s "https://blog.example.ru/wp-json/wp/v2/posts?per_page=1" \
+  -u "admin:xxxx xxxx xxxx xxxx xxxx xxxx" \
+  | python3 -c "import sys,json; print(len(json.load(sys.stdin)), 'posts')"
+```
+
+Если всё настроено правильно, команда выведет `1 posts`. Если ошибка 401 — проверь логин и пароль.
+
+### Настройка нового WordPress-блога для Дзен
+
+Если у тебя ещё нет WordPress-блога:
+
+1. **Установи WordPress** на любом хостинге:
+   - Рекомендуемые: Timeweb, Beget, или свой VPS
+   - Минимальные требования: PHP 7.4+, MySQL 5.7+, 512 МБ RAM
+2. **Настрой ЧПУ**: Настройки → Постоянные ссылки → выбери **"Название записи"** (`/%postname%/`)
+3. **Установи плагины** (опционально):
+   - Classic Editor — для более чистого контента без блоков Gutenberg
+   - RankMath или Yoast SEO — для SEO-метаданных
+4. **Создай Application Password** (см. Вариант A выше)
+5. **Настрой RSS → Дзен автоимпорт:**
+   - Перейди в Студию Дзена: [dzen.ru/publisher](https://dzen.ru/publisher)
+   - Создай канал (если ещё нет) или перейди в существующий
+   - Настройки → Источник публикаций → RSS
+   - Введи URL RSS-ленты: `https://blog.example.ru/feed/`
+   - Дзен начнёт автоматически импортировать новые посты (задержка 15-60 минут)
+
+---
+
 ## Устранение проблем
 
 ### `node: command not found`
@@ -370,11 +489,11 @@ ls ~/.claude/skills/seo-article-writer/config.env
 - Проверь права: `chmod 600 ~/.ssh/id_rsa`
 - Проверь что ключ добавлен на сервер: `ssh-copy-id user@server`
 
-### `API error 401` (ApiYi)
+### `API error 401` (Kie.ai)
 
-- Проверь `APIYI_API_KEY` в config.env
-- Проверь баланс на apiyi.com
-- Попробуй: `curl -s https://api.apiyi.com/v1/models -H "Authorization: Bearer $APIYI_API_KEY"`
+- Проверь `KIE_API_KEY` в config.env
+- Проверь баланс на kieai.erweima.ai
+- Попробуй: `curl -s https://kieai.erweima.ai/api/v1/models -H "Authorization: Bearer $KIE_API_KEY"`
 
 ### `playwright не установлен`
 

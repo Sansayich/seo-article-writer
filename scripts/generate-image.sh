@@ -74,7 +74,7 @@ done
 
 # Приоритет моделей: nano-banana-2 > gemini-3-pro-image-preview > gemini-2.5-flash-image
 MODELS=("nano-banana-2" "gemini-3-pro-image-preview" "gemini-2.5-flash-image")
-API_BASE="${APIYI_BASE_URL:-https://api.apiyi.com}/v1beta/models"
+API_BASE="${KIE_BASE_URL:-https://kieai.erweima.ai/api}/v1beta/models"
 
 # ── Функция: скачать изображение и вернуть base64 ────────────────────────────
 url_to_base64() {
@@ -139,7 +139,7 @@ call_nb2() {
     for attempt in 1 2 3; do
       local resp
       resp=$(curl -s -X POST "$api_url" \
-        -H "Authorization: Bearer ${APIYI_API_KEY}" \
+        -H "Authorization: Bearer ${KIE_API_KEY}" \
         -H "Content-Type: application/json" \
         --max-time 120 \
         -d "$payload")

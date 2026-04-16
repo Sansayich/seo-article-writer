@@ -1448,7 +1448,7 @@ MCP-сервер `wordstat` подключён через коннектор (mc
 
 Скрипты находятся в `scripts/`. Конфиг: `config.env` (создай из `config.env.example`).
 
-**Модель:** `nano-banana-2` (основная) -> `gemini-3-pro-image-preview` -> `gemini-2.5-flash-image` (фоллбеки) через ApiYi
+**Модель:** `nano-banana-2` (основная) -> `gemini-3-pro-image-preview` -> `gemini-2.5-flash-image` (фоллбеки) через Kie.ai
 
 | Скрипт | Режим | Назначение |
 |--------|-------|-----------|
@@ -1477,7 +1477,7 @@ bash scripts/screenshot.sh "https://example.com" "example" 1280 800
 - `config.env не найден` -> скопируй `config.env.example` -> `config.env`, заполни
 - `playwright не установлен` -> установи вручную: `npm install playwright && npx playwright install chromium`
 - `SSH: Permission denied` -> проверь `SSH_KEY_PATH`, права на ключ: `chmod 600 ~/.ssh/id_rsa`
-- `API error 401` -> проверь `APIYI_API_KEY` в config.env
+- `API error 401` -> проверь `KIE_API_KEY` в config.env
 - `API не вернул изображение` -> добавь в промпт префикс "Generate an image:" или увеличь timeout
 - Текст на картинке нечёткий -> сократи текст до 25 символов, используй режим `image`
 - Скриншот показывает 502/гео-блок -> сними через сервер (см. ниже)
